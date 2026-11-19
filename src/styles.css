@@ -292,3 +292,7 @@ button.item:active, .press:active { opacity: .65; }
 /* ---------- sign-in and waiting screens (live app) ---------- */
 .gate { min-height: 100dvh; display: grid; place-items: center; padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); background: var(--bg); }
 .gate-in { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 28px; }
+
+/* owner's sales card on Today */
+.sales-big { font-family: var(--display); font-weight: 500; font-size: 34px; line-height: 1.1; margin-top: 6px; }
+.fu-what { font-size: 15px; margin-top: 2px; }
