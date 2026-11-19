@@ -1,0 +1,10 @@
+// Lets Cloudflare serve the built app whether the project was created as
+// "Pages" or as a "Worker" (the newer default, which runs `npx wrangler deploy`).
+{
+  "name": "tr-field",
+  "compatibility_date": "2025-06-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
