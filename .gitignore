@@ -1,0 +1,8 @@
+node_modules/
+dist/
+dist-preview/
+shots/
+# Client data never goes into the code repository
+supabase/02_import.sql
+*.json.bak
+.env*
