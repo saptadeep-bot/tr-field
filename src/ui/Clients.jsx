@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp, Icon, Empty, StagePill, Avatar, Chips } from './kit.jsx';
-import { NewClientSheet, BookSheet, StageSheet, AssignSheet, NoteSheet, OutcomeSheet } from './forms.jsx';
+import { NewClientSheet, BookSheet, StageSheet, AssignSheet, NoteSheet, OutcomeSheet, EditClientSheet } from './forms.jsx';
 import { MeasureView } from './MeasureForm.jsx';
 import { NewOrderSheet } from './OrderEdit.jsx';
 import { FollowRow } from './Today.jsx';
@@ -89,6 +89,7 @@ export function ClientView({ id, startTab }) {
             {can(me, 'book') && <button className="btn ghost small" onClick={() => app.open(<BookSheet clientId={id} type={orders.some(o => o.status !== 'delivered') ? 'trial1' : 'consult'} />)}><Icon n="cal" />Book</button>}
             {can(me, 'seePrices') && <button className="btn ghost small" onClick={() => app.go('quote', { clientId: id })}><Icon n="quote" />Quote</button>}
             <button className="btn ghost small" onClick={() => app.open(<NoteSheet clientId={id} />)}><Icon n="edit" />Note</button>
+            {can(me, 'editClients') && <button className="btn ghost small" onClick={() => app.open(<EditClientSheet clientId={id} />)}><Icon n="edit" />Edit details</button>}
           </div>
         </>}
       </header>

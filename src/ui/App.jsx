@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
-import { AppCtx, useAppState, Icon, Avatar } from './kit.jsx';
-import { RoleSheet } from './forms.jsx';
+import { AppCtx, useAppState, Icon, Avatar, pendingDraft } from './kit.jsx';
+import { RoleSheet, NewClientSheet, EditClientSheet } from './forms.jsx';
 import { Today } from './Today.jsx';
 import { Pipeline } from './Pipeline.jsx';
 import { Clients, ClientView } from './Clients.jsx';
@@ -30,6 +30,12 @@ export function App() {
   const top = app.stack[app.stack.length - 1];
   // The owner's home leaves out delivered and lost clients; the badge matches it.
   const due = me.role === 'tailor' ? 0 : S.followUps(me, s).filter(f => f.due <= today() && !(can(me, 'seeCosts') && ['delivered', 'lost', 'closed'].includes((S.clientById(f.clientId, s) || {}).stage))).length;
+  // If the phone reloaded the app while a form was half-filled, open it again.
+  useEffect(() => {
+    const d = pendingDraft();
+    if (d && d.kind === 'newClient' && can(me, 'editClients')) app.open(<NewClientSheet />);
+    else if (d && d.kind === 'editClient' && S.clientById(d.key, s)) app.open(<EditClientSheet clientId={d.key} />);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // A change that didn't reach the database: say so, and show the saved copy again.
   useEffect(() => {
     const h = () => app.toast("That didn't save — check your signal and try again");

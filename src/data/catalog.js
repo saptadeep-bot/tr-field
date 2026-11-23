@@ -47,6 +47,7 @@ export const SOURCES = [
   { key: 'email', label: 'Email' },
   { key: 'referral', label: 'Referral' },
   { key: 'instagram', label: 'Instagram' },
+  { key: 'meta', label: 'Meta ad' },
   { key: 'website', label: 'Website' },
   { key: 'walkin', label: 'Walk-in / event' },
   { key: 'repeat', label: 'Repeat client' },

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sheet, Field, Chips, Opt, Avatar, useApp } from './kit.jsx';
+import { Sheet, Field, Chips, Opt, Avatar, useApp, readDraft, useDraft } from './kit.jsx';
 import { MeasureFormSheet } from './MeasureForm.jsx';
 import * as S from '../data/store.js';
 import { useStore } from '../data/store.js';
@@ -15,8 +15,9 @@ export function NewClientSheet() {
   const app = useApp();
   const s = useStore();
   const me = S.me(s);
-  const [v, setV] = useState({ name: '', phone: '', email: '', city: me.city, address: '', source: 'whatsapp', sourceDetail: '', occasion: '', eventDate: '', budget: '', notes: '', assignedTo: me.role === 'rep' ? me.id : '', book: true, date: addDays(today(), 1), time: '11:00' });
+  const [v, setV] = useState(() => readDraft('newClient') || { name: '', phone: '', email: '', city: me.city, address: '', source: 'whatsapp', sourceDetail: '', occasion: '', eventDate: '', budget: '', notes: '', assignedTo: me.role === 'rep' ? me.id : '', book: true, date: addDays(today(), 1), time: '11:00' });
   const up = (k, val) => setV(x => ({ ...x, [k]: val }));
+  useDraft('newClient', '', v);
   const ok = v.name.trim() && v.phone.trim();
   const submit = () => {
     if (!ok) return;
@@ -31,6 +32,7 @@ export function NewClientSheet() {
       foot={<><button className="btn ghost" onClick={app.close}>Cancel</button><button className="btn primary" disabled={!ok} onClick={submit}>Save client</button></>}>
       <div className="form">
         <Field label="Name"><input id="nc-name" value={v.name} onChange={e => up('name', e.target.value)} autoComplete="off" /></Field>
+        <Field label="Email"><input id="nc-email" type="email" inputMode="email" value={v.email} onChange={e => up('email', e.target.value)} autoComplete="off" /></Field>
         <div className="grid2">
           <Field label="Phone"><input id="nc-phone" inputMode="tel" value={v.phone} onChange={e => up('phone', e.target.value)} placeholder="+91" /></Field>
           <Field label="City"><select id="nc-city" value={v.city} onChange={e => up('city', e.target.value)}>{CITIES.map(c => <option key={c}>{c}</option>)}</select></Field>
@@ -40,7 +42,7 @@ export function NewClientSheet() {
         </Field>
         <span className="hint tiny muted" style={{ marginTop: -8 }}>TeleCRM leads arrive by themselves once marked Appointment Taken.</span>
         {['referral', 'other', 'walkin'].includes(v.source) && <Field label={v.source === 'referral' ? 'Referred by' : 'Detail'}><input id="nc-sd" value={v.sourceDetail} onChange={e => up('sourceDetail', e.target.value)} /></Field>}
-        <Field label="Address for the visit"><input id="nc-addr" value={v.address} onChange={e => up('address', e.target.value)} /></Field>
+        <Field label="Address for the visit"><textarea id="nc-addr" value={v.address} onChange={e => up('address', e.target.value)} style={{ minHeight: 64 }} /></Field>
         <div className="grid2">
           <Field label="Occasion"><select id="nc-occ" value={v.occasion} onChange={e => up('occasion', e.target.value)}><option value="">—</option>{OCCASIONS.map(o => <option key={o}>{o}</option>)}</select></Field>
           <Field label="Event date"><input id="nc-ev" type="date" value={v.eventDate} onChange={e => up('eventDate', e.target.value)} /></Field>
@@ -56,6 +58,51 @@ export function NewClientSheet() {
           <Field label="Date"><input id="nc-d" type="date" value={v.date} onChange={e => up('date', e.target.value)} /></Field>
           <Field label="Time"><input id="nc-t" type="time" value={v.time} onChange={e => up('time', e.target.value)} /></Field>
         </div>}
+      </div>
+    </Sheet>
+  );
+}
+
+// ---------- edit a client's details ----------
+const EDITABLE = [['name', 'Name'], ['phone', 'Phone'], ['email', 'Email'], ['city', 'City'], ['address', 'Address'], ['source', 'Came from'], ['sourceDetail', 'Source detail'], ['occasion', 'Occasion'], ['eventDate', 'Event date'], ['budget', 'Budget'], ['telecrmId', 'TeleCRM id'], ['notes', 'Notes']];
+export function EditClientSheet({ clientId }) {
+  const app = useApp();
+  const s = useStore();
+  const me = S.me(s);
+  const c = S.clientById(clientId, s);
+  const [v, setV] = useState(() => readDraft('editClient', clientId) || Object.fromEntries(EDITABLE.map(([k]) => [k, c[k] || ''])));
+  const up = (k, val) => setV(x => ({ ...x, [k]: val }));
+  useDraft('editClient', clientId, v);
+  const changed = EDITABLE.filter(([k]) => String(v[k] || '').trim() !== String(c[k] || '').trim());
+  const ok = v.name.trim() && v.phone.trim() && changed.length > 0;
+  const save = () => {
+    const patch = Object.fromEntries(changed.map(([k]) => [k, typeof v[k] === 'string' ? v[k].trim() : v[k]]));
+    S.updateClient(clientId, patch);
+    S.log(clientId, `Details updated: ${changed.map(([, l]) => l.toLowerCase()).join(', ')}.`);
+    app.close(); app.toast('Details saved');
+  };
+  const sources = SOURCES.filter(x => !x.auto || x.key === v.source);
+  return (
+    <Sheet size="tall" eyebrow={c.name} title="Edit details"
+      foot={<><button className="btn ghost" onClick={app.close}>Cancel</button><button className="btn primary" disabled={!ok} onClick={save}>{changed.length ? `Save ${changed.length} change${changed.length > 1 ? 's' : ''}` : 'Save'}</button></>}>
+      <div className="form">
+        <Field label="Name"><input id="ec-name" value={v.name} onChange={e => up('name', e.target.value)} autoComplete="off" /></Field>
+        <div className="grid2">
+          <Field label="Phone"><input id="ec-phone" inputMode="tel" value={v.phone} onChange={e => up('phone', e.target.value)} /></Field>
+          <Field label="City"><select id="ec-city" value={v.city} onChange={e => up('city', e.target.value)}>{[...new Set([...CITIES, v.city].filter(Boolean))].map(x => <option key={x}>{x}</option>)}</select></Field>
+        </div>
+        <Field label="Email"><input id="ec-email" type="email" inputMode="email" value={v.email} onChange={e => up('email', e.target.value)} autoComplete="off" /></Field>
+        <Field label="Address"><textarea id="ec-addr" value={v.address} onChange={e => up('address', e.target.value)} style={{ minHeight: 64 }} /></Field>
+        <div className="grid2">
+          <Field label="Occasion"><select id="ec-occ" value={v.occasion} onChange={e => up('occasion', e.target.value)}><option value="">—</option>{[...new Set([...OCCASIONS, v.occasion].filter(Boolean))].map(o => <option key={o}>{o}</option>)}</select></Field>
+          <Field label="Event date"><input id="ec-ev" type="date" value={v.eventDate} onChange={e => up('eventDate', e.target.value)} /></Field>
+        </div>
+        {can(me, 'seePrices') && <Field label="Budget"><select id="ec-bud" value={v.budget} onChange={e => up('budget', e.target.value)}><option value="">—</option>{[...new Set([...BUDGETS, v.budget].filter(Boolean))].map(o => <option key={o}>{o}</option>)}</select></Field>}
+        <Field label="Where did he come from?"><Chips wrap value={v.source} onChange={x => up('source', x)} options={sources} /></Field>
+        <Field label={v.source === 'referral' ? 'Referred by' : 'Source detail'}><input id="ec-sd" value={v.sourceDetail} onChange={e => up('sourceDetail', e.target.value)} /></Field>
+        <Field label="TeleCRM id"><input id="ec-tc" value={v.telecrmId} onChange={e => up('telecrmId', e.target.value)} /></Field>
+        <Field label="Notes"><textarea id="ec-notes" value={v.notes} onChange={e => up('notes', e.target.value)} /></Field>
+        <p className="tiny muted" style={{ margin: 0 }}>Each change is written into the client's history with your name.</p>
       </div>
     </Sheet>
   );

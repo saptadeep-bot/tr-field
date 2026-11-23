@@ -43,10 +43,35 @@ export function Icon({ n, ...rest }) {
 export const AppCtx = createContext(null);
 export function useApp() { return useContext(AppCtx); }
 
+// Which screen you were on, so the app reopens there if the phone reloads it.
+const NAV = 'tr-field-nav';
+function savedNav() {
+  try { const n = JSON.parse(localStorage.getItem(NAV) || 'null'); if (n && Date.now() - n.at < 12 * 3600e3) return n; } catch (e) { /* none */ }
+  return null;
+}
+// A half-filled form, kept on this phone until it's saved or cancelled.
+const DRAFT = 'tr-field-draft';
+export function readDraft(kind, key = '') {
+  try { const d = JSON.parse(localStorage.getItem(DRAFT) || 'null'); if (d && d.kind === kind && d.key === key && Date.now() - d.at < 24 * 3600e3) return d.v; } catch (e) { /* none */ }
+  return null;
+}
+export function pendingDraft() {
+  try { const d = JSON.parse(localStorage.getItem(DRAFT) || 'null'); if (d && Date.now() - d.at < 24 * 3600e3) return d; } catch (e) { /* none */ }
+  return null;
+}
+export function useDraft(kind, key, value) {
+  useEffect(() => { try { localStorage.setItem(DRAFT, JSON.stringify({ kind, key, v: value, at: Date.now() })); } catch (e) { /* full */ } }, [kind, key, value]);
+  // Closing the form (saved or cancelled) throws the draft away. A reload by the
+  // phone doesn't run this, so the draft survives for the form to reopen.
+  useEffect(() => () => { try { localStorage.removeItem(DRAFT); } catch (e) { /* none */ } }, []);
+}
+
 export function useAppState() {
-  const [tab, setTab] = useState('today');
+  const start = savedNav();
+  const [tab, setTab] = useState(start ? start.tab : 'today');
   const [params, setParams] = useState({});
-  const [stack, setStack] = useState([]);
+  const [stack, setStack] = useState(start ? start.stack : []);
+  useEffect(() => { try { localStorage.setItem(NAV, JSON.stringify({ tab, stack, at: Date.now() })); } catch (e) { /* full */ } }, [tab, stack]);
   const [sheet, setSheet] = useState(null);
   const [toastMsg, setToast] = useState('');
   useEffect(() => { if (!toastMsg) return; const t = setTimeout(() => setToast(''), 2600); return () => clearTimeout(t); }, [toastMsg]);

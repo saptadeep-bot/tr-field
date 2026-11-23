@@ -15,8 +15,16 @@ export function LiveRoot() {
   const [err, setErr] = useState('');
 
   useEffect(() => {
-    sb.auth.getSession().then(({ data }) => setSession(data.session || null));
-    const { data: sub } = sb.auth.onAuthStateChange((_e, s) => setSession(s || null));
+    // Supabase re-announces the session whenever the app comes back to the
+    // front (switching to WhatsApp and back). Only a different person signing
+    // in or out should reload — otherwise the screen you were on is kept.
+    const keep = next => setSession(prev => {
+      if (!next) return null;
+      if (prev && prev.user && prev.user.id === next.user.id) return prev;
+      return next;
+    });
+    sb.auth.getSession().then(({ data }) => keep(data.session || null));
+    const { data: sub } = sb.auth.onAuthStateChange((_e, s) => keep(s || null));
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -38,7 +46,8 @@ export function LiveRoot() {
     }
   }, [session]);
 
-  useEffect(() => { if (session) boot(); else if (session === null) setPhase('start'); }, [session, boot]);
+  const uid = session ? session.user.id : session;
+  useEffect(() => { if (session) boot(); else if (session === null) setPhase('start'); }, [uid]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep the data fresh: every minute while open, and whenever the app comes back to the front.
   useEffect(() => {
@@ -62,7 +71,7 @@ export async function signOut() {
   await S.flushed();
   await sb.auth.signOut();
   S.hydrate({ ...S.get(), clients: [], orders: [], appointments: [], mforms: [], activity: [], tasks: [], quotes: [], users: [] });
-  try { localStorage.removeItem('tr-field-preview-v4'); } catch (e) { /* nothing kept */ }
+  try { ['tr-field-preview-v4', 'tr-field-nav', 'tr-field-draft'].forEach(k => localStorage.removeItem(k)); } catch (e) { /* nothing kept */ }
   window.location.reload();
 }
 
