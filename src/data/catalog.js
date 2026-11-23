@@ -10,8 +10,8 @@ export const ROLES = {
 // Permissions per role. In the live app these are enforced by the database,
 // not just hidden on screen.
 const PERMS = {
-  owner: ['seeAllClients', 'assign', 'seeContact', 'seePrices', 'seeCosts', 'recordPayment', 'editPricing', 'manageTeam', 'editClients', 'book', 'editMeasure'],
-  coordinator: ['seeAllClients', 'assign', 'seeContact', 'seePrices', 'recordPayment', 'editClients', 'book', 'editMeasure'],
+  owner: ['seeAllClients', 'assign', 'seeContact', 'seePrices', 'seeCosts', 'recordPayment', 'editPricing', 'manageTeam', 'editClients', 'book', 'editMeasure', 'editOrders'],
+  coordinator: ['seeAllClients', 'assign', 'seeContact', 'seePrices', 'recordPayment', 'editClients', 'book', 'editMeasure', 'editOrders'],
   rep: ['seeContact', 'seePrices', 'recordPayment', 'editClients', 'book', 'editMeasure'],
   tailor: []
 };

@@ -144,6 +144,7 @@ export const db = {
     const row = toRow(table, patch);
     if (Object.keys(row).length) check(await sb.from(table).update(row).eq('id', id));
   },
+  remove: async (table, id) => check(await sb.from(table).delete().eq('id', id)),
   upsert: async (table, obj) => check(await sb.from(table).upsert(toRow(table, obj))),
   orderCosts: async (orderId, c) => check(await sb.from('order_costs').upsert({ order_id: orderId, fabric: +c.fabric || 0, stitching: +c.stitching || 0, logistics: +c.logistics || 0, delivery: +c.delivery || 0 })),
   orderNumber: async id => { const { data, error } = await sb.from('orders').select('number').eq('id', id).single(); if (error) throw error; return data.number; },

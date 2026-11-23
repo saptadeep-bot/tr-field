@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp, Icon, Empty, StagePill, Avatar, Chips } from './kit.jsx';
 import { NewClientSheet, BookSheet, StageSheet, AssignSheet, NoteSheet, OutcomeSheet } from './forms.jsx';
 import { MeasureView } from './MeasureForm.jsx';
+import { NewOrderSheet } from './OrderEdit.jsx';
 import { FollowRow } from './Today.jsx';
 import * as S from '../data/store.js';
 import { useStore } from '../data/store.js';
@@ -135,6 +136,7 @@ export function ClientView({ id, startTab }) {
       {tab === 'measure' && <MeasureView clientId={id} />}
 
       {tab === 'orders' && <section className="stack">
+        {can(me, 'editOrders') && <button className="btn ghost" style={{ alignSelf: 'flex-start' }} onClick={() => app.open(<NewOrderSheet clientId={id} />)}><Icon n="plus" />Enter an order</button>}
         {orders.length ? <div className="list">{orders.map(o => (
           <button className="item" key={o.id} onClick={() => app.push({ view: 'order', id: o.id })}>
             <div className="item-main">

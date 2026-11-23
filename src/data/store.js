@@ -245,6 +245,47 @@ export function createOrder({ clientId, items, dates, advance, by }) {
   log(clientId, `Order ${number} confirmed.`);
   return id;
 }
+// An order entered by hand, as in the Client Book: garments, the order value
+// and any payment so far. The value is kept as entered, never repriced.
+export function addManualOrder({ clientId, items, total, createdAt, status, dates, payment, notes }) {
+  const s0 = get();
+  const id = uid('o');
+  const number = s0.live ? 'TR-····' : 'TR-' + String(s0.nextOrder).padStart(4, '0');
+  const payments = payment && +payment.amount > 0 ? [{ id: uid('p'), stage: 'advance', reference: '', ...payment, amount: +payment.amount }] : [];
+  const o = { id, number, clientId, createdAt: createdAt || today(), status: status || 'confirmed', by: s0.me, items, dates: dates || {}, payments,
+    total: +total || 0, gstPct: 5, priceIncomplete: false, imported: true, costs: { fabric: 0, stitching: 0, logistics: 0, delivery: 0 }, notes: notes || '' };
+  set(s => { s.orders = [o, ...s.orders]; s.nextOrder = s.nextOrder + 1; });
+  setStage(clientId, o.status);
+  if (s0.live) {
+    persist(async db => {
+      const { number: _n, ...row } = o;
+      await db.insert('orders', row);
+      for (const p of payments) await db.insert('payments', { ...p, orderId: id });
+      const n = await db.orderNumber(id);
+      set(s => { s.orders = s.orders.map(x => (x.id === id ? { ...x, number: n } : x)); });
+      await db.insert('activity', { id: uid('l'), clientId, text: `Order ${n} entered: ${inr(o.total)}.` });
+    });
+  } else log(clientId, `Order ${number} entered: ${inr(o.total)}.`);
+  return id;
+}
+// Change an order's value, garments, dates or stage by hand.
+export function editOrder(id, patch) {
+  const o = get().orders.find(x => x.id === id); if (!o) return;
+  const p = { ...patch };
+  if ('total' in p && +p.total !== o.total) { p.total = +p.total || 0; p.imported = true; p.priceIncomplete = false; if (o.gstPct == null) p.gstPct = 5; }
+  updateOrder(id, p);
+  if (p.status && p.status !== o.status) setStage(o.clientId, p.status);
+  const what = [p.total !== undefined && +p.total !== o.total ? `value ${inr(o.total)} → ${inr(+p.total)}` : '', p.status && p.status !== o.status ? `stage → ${p.status}` : ''].filter(Boolean).join(', ');
+  log(o.clientId, `${o.number} edited${what ? `: ${what}` : ''}.`);
+}
+export function updatePayment(orderId, pid, patch) {
+  set(s => { s.orders = s.orders.map(o => (o.id === orderId ? { ...o, payments: o.payments.map(p => (p.id === pid ? { ...p, ...patch } : p)) } : o)); });
+  persist(db => db.update('payments', pid, patch));
+}
+export function deletePayment(orderId, pid) {
+  set(s => { s.orders = s.orders.map(o => (o.id === orderId ? { ...o, payments: o.payments.filter(p => p.id !== pid) } : o)); });
+  persist(db => db.remove('payments', pid));
+}
 export function updateOrder(id, patch) {
   set(s => { s.orders = s.orders.map(o => (o.id === id ? { ...o, ...patch } : o)); });
   const { costs, payments, ...rest } = patch;

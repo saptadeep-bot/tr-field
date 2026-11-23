@@ -3,10 +3,17 @@ import { useApp, Icon, Empty } from './kit.jsx';
 import { OutcomeSheet, AssignSheet } from './forms.jsx';
 import * as S from '../data/store.js';
 import { useStore } from '../data/store.js';
-import { can, apptLabel } from '../data/catalog.js';
+import { can, apptLabel, CITIES, orderStatusLabel } from '../data/catalog.js';
+import { Chips } from './kit.jsx';
 import { today, fmtLong, fmtTime, dueLabel, addDays, fmtDate, rel, inr } from '../data/util.js';
 
 export function Today() {
+  const s = useStore();
+  if (can(S.me(s), 'seeCosts')) return <OwnerToday />;
+  return <TeamToday />;
+}
+
+function TeamToday() {
   const app = useApp();
   const s = useStore();
   const me = S.me(s);
@@ -33,8 +40,6 @@ export function Today() {
           {' · '}{due.length ? `${due.length} follow-up${due.length > 1 ? 's' : ''} due${overdue ? `, ${overdue} overdue` : ''}` : 'nothing due'}
         </p>
       </header>
-
-      {can(me, 'seeCosts') && <Sales orders={s.orders} />}
 
       {inbox.length > 0 && (
         <section className="sec">
@@ -105,7 +110,7 @@ export function ApptRow({ a, showDate }) {
             {fromTele && a.type === 'consult' && <span className="pill">TeleCRM</span>}
           </div>
           {can(me, 'seeContact') && <div className="item-sub">{c.address}</div>}
-          <div className="item-sub">{[c.occasion, c.budget && can(me, 'seePrices') ? c.budget : '', me.role !== 'rep' ? S.userName(a.assignedTo, s) : ''].filter(Boolean).join(' · ')}</div>
+          <div className="item-sub">{[me.role !== 'rep' ? c.city : '', me.role !== 'rep' ? S.userName(a.assignedTo, s) : '', c.occasion, c.budget && can(me, 'seePrices') ? c.budget : ''].filter(Boolean).join(' · ')}</div>
           {a.notes && <div className="item-sub" style={{ color: 'var(--fg)' }}>{a.notes}</div>}
         </button>
         {can(me, 'seeContact') && <div className="tiny muted num" style={{ marginTop: 6 }}>{c.phone}</div>}
@@ -140,6 +145,103 @@ export function FollowRow({ f, hideClient }) {
         </div>
       </button>
       <button className="iconbtn" aria-label="Snooze two days" title="Snooze two days" onClick={() => { S.snoozeFollowUp(f, 2); app.toast('Moved to ' + fmtDate(addDays(today(), 2))); }}><Icon n="snooze" /></button>
+    </div>
+  );
+}
+
+// The owner's home: sales, every city's visits for today and the week, the
+// orders in the making (newest first), then follow-ups for clients still in play.
+const DONE = ['delivered', 'lost', 'closed'];
+function OwnerToday() {
+  const app = useApp();
+  const s = useStore();
+  const me = S.me(s);
+  const t = today();
+  const [city, setCity] = React.useState('All');
+  const inCity = c => city === 'All' || (c && c.city === city);
+  const appts = s.appointments.filter(a => a.status === 'scheduled' && inCity(S.clientById(a.clientId, s)));
+  const todays = appts.filter(a => a.date === t).sort((a, b) => (a.time < b.time ? -1 : 1));
+  const week = appts.filter(a => a.date > t && a.date <= addDays(t, 7)).sort((a, b) => (a.date + a.time < b.date + b.time ? -1 : 1));
+  const open = s.orders
+    .filter(o => o.status !== 'delivered' && !DONE.includes((S.clientById(o.clientId, s) || {}).stage) && inCity(S.clientById(o.clientId, s)))
+    .sort((a, b) => (a.createdAt === b.createdAt ? (a.number < b.number ? 1 : -1) : a.createdAt < b.createdAt ? 1 : -1));
+  const fus = S.followUps(me, s).filter(f => !DONE.includes((S.clientById(f.clientId, s) || {}).stage) && inCity(S.clientById(f.clientId, s)));
+  const due = fus.filter(f => f.due <= t).sort((a, b) => (a.due === b.due ? 0 : a.due < b.due ? 1 : -1));
+  const inbox = s.clients.filter(c => c.source === 'telecrm' && !c.assignedTo && !DONE.includes(c.stage));
+  const hour = new Date().getHours();
+  const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const counts = Object.fromEntries(CITIES.map(c => [c, s.appointments.filter(a => a.status === 'scheduled' && a.date >= t && a.date <= addDays(t, 7) && (S.clientById(a.clientId, s) || {}).city === c).length]));
+
+  return (
+    <div className="stack">
+      <header>
+        <div className="eyebrow">{fmtLong(t)}</div>
+        <h1 className="h1" style={{ marginTop: 4 }}>{greet}, {me.name.split(' ')[0]}.</h1>
+      </header>
+
+      <Sales orders={s.orders} />
+
+      {inbox.length > 0 && (
+        <section className="sec">
+          <div className="sec-h"><h2 className="h2">New from TeleCRM</h2><span className="count">{inbox.length} to assign</span></div>
+          <div className="list">{inbox.map(c => (
+            <div className="item" key={c.id}>
+              <div className="item-main press" role="button" tabIndex={0} onClick={() => app.push({ view: 'client', id: c.id })}>
+                <div className="item-title">{c.name}</div>
+                <div className="item-sub">{c.city} · {c.occasion || 'Occasion not given'}</div>
+              </div>
+              <button className="btn small" onClick={() => app.open(<AssignSheet clientId={c.id} />)}>Assign</button>
+            </div>
+          ))}</div>
+        </section>
+      )}
+
+      <Chips value={city} onChange={setCity} options={[{ key: 'All', label: 'All cities' }, ...CITIES.map(c => ({ key: c, label: counts[c] ? `${c} · ${counts[c]}` : c }))]} />
+
+      <section className="sec">
+        <div className="sec-h"><h2 className="h2">Appointments today</h2><span className="count">{todays.length}</span></div>
+        {todays.length ? <div className="list">{todays.map(a => <ApptRow key={a.id} a={a} />)}</div>
+          : <p className="small muted" style={{ margin: 0 }}>Nothing booked for today{city !== 'All' ? ` in ${city}` : ''}.</p>}
+      </section>
+
+      <section className="sec">
+        <div className="sec-h"><h2 className="h2">This week</h2><span className="count">{week.length}</span></div>
+        {week.length ? <div className="list">{week.map(a => {
+          const c = S.clientById(a.clientId, s);
+          return (
+            <button className="item" key={a.id} onClick={() => app.push({ view: 'client', id: c.id })}>
+              <div className="item-main">
+                <div className="item-title">{c.name}</div>
+                <div className="item-sub">{apptLabel(a.type)} · {c.city} · {S.userName(a.assignedTo, s)}</div>
+              </div>
+              <div className="item-end num">{rel(a.date)}<div className="muted tiny">{fmtTime(a.time)}</div></div>
+            </button>
+          );
+        })}</div> : <p className="small muted" style={{ margin: 0 }}>Nothing booked for the next seven days{city !== 'All' ? ` in ${city}` : ''}.</p>}
+      </section>
+
+      <section className="sec">
+        <div className="sec-h"><h2 className="h2">Open orders</h2><span className="count">{open.length}</span></div>
+        {open.length ? <div className="list">{open.map(o => {
+          const c = S.clientById(o.clientId, s);
+          const paid = S.paid(o);
+          return (
+            <button className="item" key={o.id} onClick={() => app.push({ view: 'order', id: o.id })}>
+              <div className="item-main">
+                <div className="item-title">{c ? c.name : '—'}</div>
+                <div className="item-sub"><span className="pill gold">{orderStatusLabel(o.status)}</span> {o.number} · {c ? c.city : ''} · ordered {fmtDate(o.createdAt)}</div>
+              </div>
+              <div className="item-end num">{inr(o.total)}<div className="tiny" style={{ color: paid >= (o.total || 0) ? 'var(--ok)' : 'var(--muted)' }}>{paid >= (o.total || 0) ? 'Paid' : `${inr((o.total || 0) - paid)} due`}</div></div>
+            </button>
+          );
+        })}</div> : <p className="small muted" style={{ margin: 0 }}>No orders in the making.</p>}
+      </section>
+
+      <section className="sec">
+        <div className="sec-h"><h2 className="h2">Follow-ups</h2><span className="count">{due.length} due</span></div>
+        {due.length ? <div className="list">{due.map(f => <FollowRow key={f.key} f={f} />)}</div>
+          : <p className="small muted" style={{ margin: 0 }}>Nothing due.</p>}
+      </section>
     </div>
   );
 }

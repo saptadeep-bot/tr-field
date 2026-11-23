@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp, Icon, Empty, Chips, Sheet, Field } from './kit.jsx';
 import { PaymentSheet, BookSheet } from './forms.jsx';
 import { MeasureView } from './MeasureForm.jsx';
+import { EditOrderSheet, PaymentList } from './OrderEdit.jsx';
 import * as S from '../data/store.js';
 import { useStore } from '../data/store.js';
 import { can, ORDER_STATUS, PAY_STAGES, orderStatusLabel } from '../data/catalog.js';
@@ -128,8 +129,13 @@ export function OrderView({ id }) {
             </div>
           );
         })}</div>
-        <div className="tiny muted">{o.imported ? 'Total as recorded in the Client Book.' : `Total includes GST at ${o.gstPct != null ? o.gstPct : 5}%.`}{(o.payments || []).length > 0 ? ' ' + o.payments.map(p => `${fmtDate(p.date)}: ${inr(p.amount)} by ${p.method}${p.reference ? ` (${p.reference})` : ''}`).join(' · ') : ''}</div>
-        {can(me, 'recordPayment') && paid < o.total && <button className="btn ghost" onClick={() => app.open(<PaymentSheet order={o} />)}><Icon n="plus" />Record a payment</button>}
+        <div className="tiny muted">{o.imported ? 'Order value as entered, including GST.' : `Total includes GST at ${o.gstPct != null ? o.gstPct : 5}%.`}{paid < o.total ? ` Balance ${inr(o.total - paid)}.` : ''}</div>
+        <div className="eyebrow" style={{ marginTop: 4 }}>Received</div>
+        <PaymentList order={o} />
+        <div className="row wrap">
+          {can(me, 'recordPayment') && paid < o.total && <button className="btn ghost" onClick={() => app.open(<PaymentSheet order={o} />)}><Icon n="plus" />Record a payment</button>}
+          {can(me, 'editOrders') && <button className="btn ghost" onClick={() => app.open(<EditOrderSheet order={o} />)}>Edit the order</button>}
+        </div>
       </section>}
 
       {can(me, 'seeCosts') && <CostSection o={o} />}

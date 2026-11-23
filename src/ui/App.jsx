@@ -9,7 +9,7 @@ import { OrdersList, OrderView } from './Orders.jsx';
 import { More, Bookings, ClothLibrary, Team, Pricing, About } from './More.jsx';
 import * as S from '../data/store.js';
 import { useStore } from '../data/store.js';
-import { ROLES } from '../data/catalog.js';
+import { ROLES, can } from '../data/catalog.js';
 import { today } from '../data/util.js';
 
 const TABS = {
@@ -28,7 +28,8 @@ export function App() {
   const tabs = me.role === 'tailor' ? ['work', 'more'] : ['today', 'pipeline', 'clients', 'quote', 'more'];
   const tab = tabs.includes(app.tab) ? app.tab : tabs[0];
   const top = app.stack[app.stack.length - 1];
-  const due = me.role === 'tailor' ? 0 : S.followUps(me, s).filter(f => f.due <= today()).length;
+  // The owner's home leaves out delivered and lost clients; the badge matches it.
+  const due = me.role === 'tailor' ? 0 : S.followUps(me, s).filter(f => f.due <= today() && !(can(me, 'seeCosts') && ['delivered', 'lost', 'closed'].includes((S.clientById(f.clientId, s) || {}).stage))).length;
   // A change that didn't reach the database: say so, and show the saved copy again.
   useEffect(() => {
     const h = () => app.toast("That didn't save — check your signal and try again");
