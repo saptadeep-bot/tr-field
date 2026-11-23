@@ -205,10 +205,11 @@ export function PaymentSheet({ order }) {
   const [amount, setAmount] = useState(String((due.find(d => d.key === first) || {}).owed || ''));
   const [method, setMethod] = useState('UPI');
   const [date, setDate] = useState(today());
+  const [note, setNote] = useState('');
   const pick = k => { setStage(k); setAmount(String(due.find(d => d.key === k).owed || '')); };
   return (
     <Sheet eyebrow={order.number} title="Record a payment"
-      foot={<><button className="btn ghost" onClick={app.close}>Cancel</button><button className="btn primary" disabled={!(+amount > 0)} onClick={() => { S.recordPayment(order.id, { stage, amount: +amount, method, date }); app.close(); app.toast('Payment recorded'); }}>Record {+amount > 0 ? inr(+amount) : ''}</button></>}>
+      foot={<><button className="btn ghost" onClick={app.close}>Cancel</button><button className="btn primary" disabled={!(+amount > 0)} onClick={() => { S.recordPayment(order.id, { stage, amount: +amount, method, date, reference: note.trim() }); app.close(); app.toast('Payment recorded'); }}>Record {+amount > 0 ? inr(+amount) : ''}</button></>}>
       <div className="form">
         <div className="stack-s">{due.map(d => <Opt key={d.key} on={stage === d.key} onClick={() => pick(d.key)} title={`${d.label} — ${d.pct}%`} sub={d.owed > 0 ? `${inr(d.owed)} still due` : 'Paid'} />)}</div>
         <div className="grid2">
@@ -216,6 +217,7 @@ export function PaymentSheet({ order }) {
           <Field label="Date"><input id="py-d" type="date" value={date} onChange={e => setDate(e.target.value)} /></Field>
         </div>
         <Field label="Method"><Chips wrap value={method} onChange={setMethod} options={PAY_METHODS} /></Field>
+        <Field label="Notes"><textarea id="py-n" value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. UTR number, paid by his brother, part of the trial payment" style={{ minHeight: 72 }} /></Field>
       </div>
     </Sheet>
   );

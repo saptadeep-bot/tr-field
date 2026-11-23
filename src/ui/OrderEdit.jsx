@@ -60,11 +60,12 @@ export function NewOrderSheet({ clientId }) {
   const [paid, setPaid] = useState('');
   const [method, setMethod] = useState('UPI');
   const [payDate, setPayDate] = useState(today());
+  const [payNote, setPayNote] = useState('');
   const [notes, setNotes] = useState('');
   const ok = +total > 0 && items.length > 0;
   const save = () => {
     const id = S.addManualOrder({ clientId, items, total: +total, createdAt: date, status, dates: { trial1: trial, trial2: '', delivery },
-      payment: +paid > 0 ? { amount: +paid, method, date: payDate } : null, notes: notes.trim() });
+      payment: +paid > 0 ? { amount: +paid, method, date: payDate, reference: payNote.trim() } : null, notes: notes.trim() });
     app.close(); app.toast('Order saved'); app.push({ view: 'order', id });
   };
   return (
@@ -88,6 +89,7 @@ export function NewOrderSheet({ clientId }) {
             <Field label="Date"><input id="oe-pdate" type="date" value={payDate} onChange={e => setPayDate(e.target.value)} /></Field>
           </div>
           {+paid > 0 && <Chips wrap value={method} onChange={setMethod} options={PAY_METHODS} />}
+          {+paid > 0 && <Field label="Payment notes"><textarea id="oe-pnote" value={payNote} onChange={e => setPayNote(e.target.value)} placeholder="e.g. UTR number, who paid" style={{ minHeight: 64 }} /></Field>}
           <p className="tiny muted" style={{ margin: 0 }}>Add more payments from the order afterwards.</p>
         </section>
         <Field label="Notes"><textarea id="oe-notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Anything about this order" /></Field>
@@ -137,7 +139,7 @@ export function PaymentList({ order }) {
       <button className="item" key={p.id} disabled={!owner} onClick={() => owner && app.open(<EditPaymentSheet order={order} pay={p} />)}>
         <div className="item-main">
           <div className="item-title" style={{ fontWeight: 400 }}>{fmtDate(p.date)} · {p.method || '—'}</div>
-          {p.reference && <div className="item-sub">{p.reference}</div>}
+          {p.reference && <div className="small" style={{ marginTop: 2, whiteSpace: 'pre-wrap' }}>{p.reference}</div>}
         </div>
         <div className="item-end num">{inr(p.amount)}</div>
       </button>
@@ -166,7 +168,7 @@ function EditPaymentSheet({ order, pay }) {
         </div>
         <Field label="Method"><Chips wrap value={method} onChange={setMethod} options={PAY_METHODS} /></Field>
         <div className="stack-s"><div className="eyebrow">Towards</div><Chips value={stage} onChange={setStage} options={PAY_STAGES.map(p => ({ key: p.key, label: p.label }))} /></div>
-        <Field label="Note"><input id="pe-r" value={reference} onChange={e => setReference(e.target.value)} placeholder="e.g. UTR number" /></Field>
+        <Field label="Notes"><textarea id="pe-r" value={reference} onChange={e => setReference(e.target.value)} placeholder="e.g. UTR number, who paid" style={{ minHeight: 72 }} /></Field>
       </div>
     </Sheet>
   );

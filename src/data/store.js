@@ -309,7 +309,7 @@ export function recordPayment(orderId, pay) {
   const p = { id: uid('p'), ...pay };
   set(s => { s.orders = s.orders.map(x => (x.id === orderId ? { ...x, payments: [...(x.payments || []), p] } : x)); });
   persist(db => db.insert('payments', { ...p, orderId }));
-  if (o) log(o.clientId, `Payment of ₹${(+pay.amount).toLocaleString('en-IN')} recorded (${pay.method}) — ${o.number}.`);
+  if (o) log(o.clientId, `Payment of ₹${(+pay.amount).toLocaleString('en-IN')} recorded (${pay.method}) — ${o.number}.${pay.reference ? ` ${pay.reference}` : ''}`);
 }
 // Each save of the measurement form is a new version; earlier versions are never changed.
 export function saveMeasureForm({ clientId, reason, form, photos }) {
