@@ -34,26 +34,30 @@ export function fmtTime(t) {
   const hh = h % 12 || 12;
   return m ? `${hh}:${String(m).padStart(2, '0')} ${ap}` : `${hh} ${ap}`;
 }
+// How far away a day is, in words: "today", "tomorrow", "in 3 days", "5 days ago".
+function away(n) {
+  if (n === 0) return 'today';
+  if (n === 1) return 'tomorrow';
+  if (n === -1) return 'yesterday';
+  return n < 0 ? `${-n} days ago` : `in ${n} days`;
+}
+const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
+// "Tomorrow · Fri 27 Nov", "In 12 days · Tue 8 Dec": always the date beside the days.
 export function rel(dateStr) {
-  const n = diffDays(dateStr, today());
-  if (n === 0) return 'Today';
-  if (n === 1) return 'Tomorrow';
-  if (n === -1) return 'Yesterday';
-  if (n < 0) return `${-n} days ago`;
-  if (n < 7) return `In ${n} days`;
-  return fmtDate(dateStr);
+  if (!dateStr) return '';
+  return `${cap(away(diffDays(dateStr, today())))} · ${fmtDate(dateStr)}`;
 }
-// "today", "in 3 days", or "on Thu 3 Dec" — for use mid-sentence.
+// For use mid-sentence: "tomorrow (Fri 27 Nov)", "in 12 days (Tue 8 Dec)".
 export function relWord(dateStr) {
-  const n = diffDays(dateStr, today());
-  return Math.abs(n) < 7 ? rel(dateStr).toLowerCase() : 'on ' + fmtDate(dateStr);
+  if (!dateStr) return '';
+  return `${away(diffDays(dateStr, today()))} (${fmtDate(dateStr)})`;
 }
+// Follow-ups: "Overdue 6d · Fri 20 Nov", "Due today", "Due in 4 days · Mon 30 Nov".
 export function dueLabel(dateStr) {
   const n = diffDays(dateStr, today());
-  if (n < 0) return `Overdue ${-n}d`;
-  if (n === 0) return 'Due today';
-  if (n === 1) return 'Tomorrow';
-  return fmtDate(dateStr);
+  if (n < 0) return `Overdue ${-n}d · ${fmtDate(dateStr)}`;
+  if (n === 0) return `Due today · ${fmtDate(dateStr)}`;
+  return `Due ${away(n)} · ${fmtDate(dateStr)}`;
 }
 export function inr(n) {
   if (n == null || !isFinite(n)) return '—';

@@ -12,7 +12,7 @@ import { today, fmtDate, inr, rel, relWord, diffDays } from '../data/util.js';
 function when(d) {
   if (!d) return '—';
   const n = diffDays(d, today());
-  return Math.abs(n) < 7 ? `${fmtDate(d)} · ${rel(d).toLowerCase()}` : fmtDate(d);
+  return rel(d);
 }
 
 export function OrdersList({ work }) {
