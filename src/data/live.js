@@ -101,7 +101,9 @@ export async function loadAll(me) {
   const costBy = Object.fromEntries(fcosts.map(c => [c.fabric_id, c]));
   const payBy = {};
   payments.forEach(p => { (payBy[p.order_id] = payBy[p.order_id] || []).push(fromRow('payments', p)); });
-  const orderCost = Object.fromEntries(costs.map(c => [c.order_id, { fabric: +c.fabric, stitching: +c.stitching, logistics: +c.logistics, delivery: +c.delivery }]));
+  // Owner-only cost figures. A blank one is worked out from the cost rules.
+  const n = v => (v == null ? null : +v);
+  const orderCost = Object.fromEntries(costs.map(c => [c.order_id, { fabric: n(c.fabric), stitching: n(c.stitching), travel: n(c.logistics), other: +c.delivery || 0, lines: (c.detail || {}).lines || {} }]));
 
   // Signed links for form photos, one request for all of them.
   const paths = forms.flatMap(f => f.photos || []);
@@ -118,7 +120,7 @@ export async function loadAll(me) {
     users: profiles.map(p => fromRow('profiles', p)),
     clients: clients.map(c => ({ phone: '', email: '', address: '', source: '', sourceDetail: '', occasion: '', eventDate: '', budget: '', assignedTo: '', stageSince: '', lostReason: '', telecrmId: '', notes: '', createdAt: '', ...fromRow('clients', c) })),
     appointments: appts.map(a => fromRow('appointments', a)),
-    orders: orders.map(o => ({ total: null, gstPct: null, priceIncomplete: false, imported: false, by: '', ...fromRow('orders', o), items: o.items || [], dates: o.dates || {}, payments: payBy[o.id] || [], costs: orderCost[o.id] || { fabric: 0, stitching: 0, logistics: 0, delivery: 0 } })),
+    orders: orders.map(o => ({ total: null, gstPct: null, priceIncomplete: false, imported: false, by: '', ...fromRow('orders', o), items: o.items || [], dates: o.dates || {}, payments: payBy[o.id] || [], costs: orderCost[o.id] || { fabric: null, stitching: null, travel: null, other: 0, lines: {} } })),
     quotes: quotes.map(q => fromRow('quotes', q)),
     fabrics: fabrics.map(f => {
       const c = costBy[f.id];
@@ -132,6 +134,7 @@ export async function loadAll(me) {
     tasks: tasks.map(t => fromRow('tasks', t)),
     dismissed: Object.fromEntries(dismissed.map(d => [d.key, d.at])),
     pricing,
+    costRules: csettings && csettings.data ? csettings.data.rules || {} : {},
     nextOrder: 0
   };
 }
@@ -146,7 +149,16 @@ export const db = {
   },
   remove: async (table, id) => check(await sb.from(table).delete().eq('id', id)),
   upsert: async (table, obj) => check(await sb.from(table).upsert(toRow(table, obj))),
-  orderCosts: async (orderId, c) => check(await sb.from('order_costs').upsert({ order_id: orderId, fabric: +c.fabric || 0, stitching: +c.stitching || 0, logistics: +c.logistics || 0, delivery: +c.delivery || 0 })),
+  orderCosts: async (orderId, c) => {
+    const n = v => (v === '' || v == null ? null : +v);
+    check(await sb.from('order_costs').upsert({ order_id: orderId, fabric: n(c.fabric), stitching: n(c.stitching), logistics: n(c.travel), delivery: +c.other || 0, detail: { lines: c.lines || {} } }));
+  },
+  costRules: async rules => check(await sb.from('cost_settings').update({ rules }).eq('id', 1)),
+  // A cloth added or changed by the owner: what the team sees, then the dealer's rate.
+  fabric: async f => {
+    check(await sb.from('fabrics').upsert({ id: f.id, house: f.house || '', mill: f.mill || '', design: f.design || '', colour: f.colour || '', composition: f.composition || '', use: f.use || 'suiting', active: true }));
+    check(await sb.from('fabric_costs').upsert({ fabric_id: f.id, vendor: f.cost.vendor || '', currency: 'INR', rate: f.cost.rate, unit: 'm' }));
+  },
   orderNumber: async id => { const { data, error } = await sb.from('orders').select('number').eq('id', id).single(); if (error) throw error; return data.number; },
   dismiss: async key => check(await sb.from('dismissed').upsert({ key }, { onConflict: 'key', ignoreDuplicates: true })),
   workroomAdvance: async (id, status) => check(await sb.rpc('workroom_advance', { order_id: id, next_status: status })),

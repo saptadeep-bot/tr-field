@@ -7,6 +7,7 @@ import { Clients, ClientView } from './Clients.jsx';
 import { Quote } from './Quote.jsx';
 import { OrdersList, OrderView } from './Orders.jsx';
 import { More, Bookings, ClothLibrary, Team, Pricing, About } from './More.jsx';
+import { ProfitPage } from './Profit.jsx';
 import * as S from '../data/store.js';
 import { useStore } from '../data/store.js';
 import { ROLES, can } from '../data/catalog.js';
@@ -52,6 +53,7 @@ export function App() {
     else if (top.view === 'cloth') body = <ClothLibrary />;
     else if (top.view === 'team') body = <Team />;
     else if (top.view === 'pricing') body = <Pricing />;
+    else if (top.view === 'profit') body = can(me, 'seeCosts') ? <ProfitPage /> : null;
     else if (top.view === 'about') body = <About />;
   } else {
     body = tab === 'today' ? <Today /> : tab === 'pipeline' ? <Pipeline /> : tab === 'clients' ? <Clients /> : tab === 'quote' ? <Quote /> : tab === 'work' ? <OrdersList work /> : <More />;

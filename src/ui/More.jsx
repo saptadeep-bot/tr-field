@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp, Icon, Empty, Chips, Avatar, Field, Sheet } from './kit.jsx';
 import { signOut, changePassword, downloadEverything } from './Live.jsx';
+import { ClothSheet } from './Profit.jsx';
 import { ApptRow } from './Today.jsx';
 import * as S from '../data/store.js';
 import { useStore } from '../data/store.js';
@@ -18,6 +19,7 @@ export function More() {
     me.role !== 'tailor' && ['cloth', 'cloth', 'Cloth library', can(me, 'seeCosts') ? 'Prices and costs, from the reckoner' : 'Mill, design, character and price'],
     can(me, 'manageTeam') && ['team', 'people', 'Team and access', 'Who signs in and what they see'],
     can(me, 'editPricing') && ['pricing', 'sliders', 'Pricing rules', 'Stitching charges, cloth consumption, fees, GST'],
+    can(me, 'seeCosts') && ['profit', 'box', 'Costs & profit', 'Only you: costs by city, profit per order, Excel'],
     s.live ? ['about', 'info', 'Account', 'Password, backup, sign out'] : ['about', 'info', 'About this preview', 'What is sample data, and what changes when it goes live']
   ].filter(Boolean);
   return (
@@ -80,6 +82,7 @@ export function Bookings() {
 
 // ---------- cloth library ----------
 export function ClothLibrary() {
+  const app = useApp();
   const s = useStore();
   const me = S.me(s);
   const owner = can(me, 'seeCosts');
@@ -98,12 +101,13 @@ export function ClothLibrary() {
         <p className="lead" style={{ marginTop: 0 }}>{owner ? 'Same cloth and rules as the reckoner. Prices are before 5% GST. Costs show only on your login.' : 'Price for one garment, including home service, before 5% GST.'}</p>
         <Chips value={g} onChange={setG} options={GARMENTS.map(x => ({ key: x.key, label: x.label }))} />
         <Chips value={tierOk} onChange={setTier} options={gd.tiers.map(k => ({ key: k, label: tierLabel(k) }))} />
+        {owner && <button className="btn ghost small" style={{ alignSelf: 'flex-start' }} onClick={() => app.open(<ClothSheet />)}><Icon n="plus" />Add a cloth</button>}
         <label className="f search"><Icon n="search" /><input id="cl-lib-q" type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Colour, mill, design, weave" aria-label="Search cloth" /></label>
       </header>
       <div className="small muted num">Stitching for {gd.label.toLowerCase()}, {tierLabel(tierOk).toLowerCase()}: {(s.pricing.making[tierOk] || {})[g] != null ? inr(s.pricing.making[tierOk][g]) : 'not set'}</div>
       {list.length > 120 && <div className="tiny muted">Showing the first 120 of {list.length}. Search to narrow it down.</div>}
       <div>{list.slice(0, 120).map(({ f, p }) => (
-        <div key={f.id} className="cloth">
+        <div key={f.id} className="cloth" role={owner ? 'button' : undefined} tabIndex={owner ? 0 : undefined} onClick={owner ? () => app.open(<ClothSheet fabric={f} />) : undefined} style={owner ? { cursor: 'pointer' } : null}>
           <div style={{ minWidth: 0 }}>
             <div className="code">{f.house}{f.mill !== '—' ? ` · ${f.mill}` : ''}</div>
             <div className="nm">{f.design}</div>

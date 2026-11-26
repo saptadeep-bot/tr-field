@@ -156,7 +156,17 @@ export function seed() {
   ];
 
   return {
-    version: 1, users, fabrics, clients, appointments, quotes, orders, mforms,
+    version: 1,
+    // Sample cost rules for the preview (the live app starts empty).
+    costRules: {
+      dealers: ['Echelon', 'M/S Enterprises', 'KBS', 'Valenzo'],
+      travel: { Delhi: 1500, Bangalore: 2500, Mumbai: 3000 },
+      stitching: Object.fromEntries(['Delhi', 'Bangalore', 'Mumbai'].map(c => [c, {
+        rtw: { twoPiece: 5500, threePiece: 6500, jacket: 3800, overcoat: 4200, bandhgala: 5500 },
+        half: { twoPiece: 11000, threePiece: 14000, jacket: 7000, overcoat: 8000, bandhgala: 11000 },
+        full: { twoPiece: 18000, threePiece: 21000, jacket: 12000, overcoat: 13000, bandhgala: 18000 },
+        std: { trouser: 900, shirt: 700, nehru: 1100 }, prem: { trouser: 2200, shirt: 2000 } }]))
+    }, users, fabrics, clients, appointments, quotes, orders, mforms,
     activity, tasks, pricing: JSON.parse(JSON.stringify(DEFAULT_PRICING)), dismissed: {}, nextOrder: 12
   };
 }
@@ -179,7 +189,9 @@ function a(id, clientId, type, date, time, assignedTo, status) {
   return { id, clientId, type, date, time, assignedTo, status, notes: '' };
 }
 function o(id, number, clientId, createdAt, status, by, items, dates, payments, costs) {
-  return { id, number, clientId, createdAt, status, by, items, dates, payments, costs, notes: '' };
+  const k = costs || {};
+  return { id, number, clientId, createdAt, status, by, items, dates, payments, notes: '',
+    costs: { fabric: k.fabric || null, stitching: k.stitching || null, travel: k.logistics || null, other: k.delivery || 0, lines: {} } };
 }
 // Sample payments are given as a share of the order; amounts are filled in once the total is priced.
 function p(stage, pct, date, method) {

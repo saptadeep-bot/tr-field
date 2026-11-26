@@ -1,7 +1,7 @@
 {
   "name": "tr-field",
   "version": "1.0.0",
-  "description": "Turn & River Field \u2014 the field app for stylists and sales.",
+  "description": "Turn & River Field — the field app for stylists and sales.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -13,7 +13,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

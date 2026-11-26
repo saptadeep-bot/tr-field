@@ -3,6 +3,7 @@ import { useApp, Icon, Empty, Chips, Sheet, Field } from './kit.jsx';
 import { PaymentSheet, BookSheet } from './forms.jsx';
 import { MeasureView } from './MeasureForm.jsx';
 import { EditOrderSheet, PaymentList } from './OrderEdit.jsx';
+import { CostSection } from './Profit.jsx';
 import * as S from '../data/store.js';
 import { useStore } from '../data/store.js';
 import { can, ORDER_STATUS, PAY_STAGES, orderStatusLabel } from '../data/catalog.js';
@@ -140,48 +141,6 @@ export function OrderView({ id }) {
 
       {can(me, 'seeCosts') && <CostSection o={o} />}
     </div>
-  );
-}
-
-function CostSection({ o }) {
-  const app = useApp();
-  const k = o.costs || {};
-  const cost = (+k.fabric || 0) + (+k.stitching || 0) + (+k.logistics || 0) + (+k.delivery || 0);
-  const gstPct = o.gstPct != null ? o.gstPct : 5;
-  const gst = Math.round((o.total || 0) - (o.total || 0) / (1 + gstPct / 100));
-  const net = (o.total || 0) - gst;
-  const profit = net - cost;
-  return (
-    <section className="card">
-      <div className="row between"><div className="eyebrow">Only you see this</div><button className="link" onClick={() => app.open(<CostSheet order={o} />)}>Edit costs</button></div>
-      <dl className="kv num" style={{ marginTop: 8 }}>
-        <dt>Fabric</dt><dd>{inr(+k.fabric || 0)}</dd>
-        <dt>Workroom stitching</dt><dd>{inr(+k.stitching || 0)}</dd>
-        <dt>Logistics</dt><dd>{inr(+k.logistics || 0)}</dd>
-        <dt>Delivery</dt><dd>{inr(+k.delivery || 0)}</dd>
-        <dt>GST to pay</dt><dd>{inr(gst)}</dd>
-        <dt style={{ color: 'var(--fg)' }}>Profit</dt><dd style={{ fontWeight: 500 }}>{cost ? `${inr(profit)} · ${Math.round(profit / (net || 1) * 100)}%` : 'Add costs to see it'}</dd>
-      </dl>
-    </section>
-  );
-}
-
-function CostSheet({ order }) {
-  const app = useApp();
-  const [k, setK] = useState({ fabric: '', stitching: '', logistics: '', delivery: '', ...order.costs });
-  const up = (f, v) => setK(x => ({ ...x, [f]: v.replace(/[^\d]/g, '') }));
-  return (
-    <Sheet eyebrow={order.number} title="Costs"
-      foot={<><button className="btn ghost" onClick={app.close}>Cancel</button><button className="btn primary" onClick={() => { S.updateOrder(order.id, { costs: Object.fromEntries(Object.entries(k).map(([a, b]) => [a, +b || 0])) }); app.close(); app.toast('Costs saved'); }}>Save</button></>}>
-      <div className="form">
-        <div className="grid2">
-          <Field label="Fabric (₹)"><input id="cs-f" inputMode="numeric" value={k.fabric} onChange={e => up('fabric', e.target.value)} /></Field>
-          <Field label="Workroom stitching (₹)"><input id="cs-s" inputMode="numeric" value={k.stitching} onChange={e => up('stitching', e.target.value)} /></Field>
-          <Field label="Logistics (₹)"><input id="cs-l" inputMode="numeric" value={k.logistics} onChange={e => up('logistics', e.target.value)} /></Field>
-          <Field label="Delivery (₹)"><input id="cs-d" inputMode="numeric" value={k.delivery} onChange={e => up('delivery', e.target.value)} /></Field>
-        </div>
-      </div>
-    </Sheet>
   );
 }
 

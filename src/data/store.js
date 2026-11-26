@@ -224,7 +224,7 @@ export function createOrder({ clientId, items, dates, advance, by }) {
   const id = uid('o');
   const payments = advance && +advance.amount > 0 ? [{ id: uid('p'), stage: 'advance', amount: +advance.amount, date: today(), method: advance.method }] : [];
   set(s => {
-    s.orders = [{ id, number, clientId, createdAt: today(), status: 'confirmed', by, items, dates, payments, total: pq.total, gstPct: pq.gstPct, priceIncomplete: !pq.complete, costs: { fabric: 0, stitching: 0, logistics: 0, delivery: 0 }, notes: '' }, ...s.orders];
+    s.orders = [{ id, number, clientId, createdAt: today(), status: 'confirmed', by, items, dates, payments, total: pq.total, gstPct: pq.gstPct, priceIncomplete: !pq.complete, costs: { fabric: null, stitching: null, travel: null, other: 0, lines: {} }, notes: '' }, ...s.orders];
     s.nextOrder = s.nextOrder + 1;
   });
   if (s0.live) {
@@ -253,7 +253,7 @@ export function addManualOrder({ clientId, items, total, createdAt, status, date
   const number = s0.live ? 'TR-····' : 'TR-' + String(s0.nextOrder).padStart(4, '0');
   const payments = payment && +payment.amount > 0 ? [{ id: uid('p'), stage: 'advance', reference: '', ...payment, amount: +payment.amount }] : [];
   const o = { id, number, clientId, createdAt: createdAt || today(), status: status || 'confirmed', by: s0.me, items, dates: dates || {}, payments,
-    total: +total || 0, gstPct: 5, priceIncomplete: false, imported: true, costs: { fabric: 0, stitching: 0, logistics: 0, delivery: 0 }, notes: notes || '' };
+    total: +total || 0, gstPct: 5, priceIncomplete: false, imported: true, costs: { fabric: null, stitching: null, travel: null, other: 0, lines: {} }, notes: notes || '' };
   set(s => { s.orders = [o, ...s.orders]; s.nextOrder = s.nextOrder + 1; });
   setStage(clientId, o.status);
   if (s0.live) {
@@ -371,6 +371,24 @@ export function savePricing(p) {
     for (const [id, patch] of repriced) await db.update('orders', id, patch);
   });
   if (state.live) chain.then(() => refresh(true)); // cloth prices follow a new uplift
+}
+// Owner only: stitching by city and construction, travel per order, dealers.
+export function saveCostRules(rules) {
+  set(s => { s.costRules = rules; });
+  persist(db => db.costRules(rules));
+}
+// Owner only: add a cloth to the library, or change its dealer or rate.
+export function saveFabric(f) {
+  const id = f.id || uid('f');
+  const row = { active: true, colour: '', use: 'suiting', ...f, id, pricePerM: null };
+  set(s => {
+    const P = s.pricing;
+    const rate = +row.cost.rate || 0;
+    row.pricePerM = P.fx ? Math.round(rate * (1 + (P.landingUpliftPct || 0) / 100) * 100) / 100 : null;
+    s.fabrics = s.fabrics.some(x => x.id === id) ? s.fabrics.map(x => (x.id === id ? { ...x, ...row } : x)) : [row, ...s.fabrics];
+  });
+  persist(db => db.fabric(row));
+  return id;
 }
 // Owner only: name, role, city, and whether someone can sign in.
 export function updateUser(id, patch) {

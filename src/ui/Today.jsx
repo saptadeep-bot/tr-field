@@ -5,6 +5,7 @@ import * as S from '../data/store.js';
 import { useStore } from '../data/store.js';
 import { can, apptLabel, CITIES, orderStatusLabel } from '../data/catalog.js';
 import { Chips } from './kit.jsx';
+import { orderCost } from '../data/costs.js';
 import { today, fmtLong, fmtTime, dueLabel, addDays, fmtDate, rel, inr } from '../data/util.js';
 
 export function Today() {
@@ -249,6 +250,8 @@ function OwnerToday() {
 // Owner only: order value closed and the number of deals, by month, as in the Client Book.
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 function Sales({ orders }) {
+  const app = useApp();
+  const st = useStore();
   const [back, setBack] = React.useState(0); // months before this one
   const now = new Date();
   const d = new Date(now.getFullYear(), now.getMonth() - back, 1);
@@ -260,6 +263,9 @@ function Sales({ orders }) {
   const fy = sum(orders.filter(o => o.createdAt >= `${fyStart}-04-01` && o.createdAt < `${fyStart + 1}-04-01`));
   const received = orders.reduce((t, o) => t + (o.payments || []).filter(p => (p.date || '').startsWith(key(d))).reduce((x, p) => x + (+p.amount || 0), 0), 0);
   const change = prev.value ? Math.round(((month.value - prev.value) / prev.value) * 100) : null;
+  const costed = orders.filter(o => (o.createdAt || '').startsWith(key(d))).map(o => orderCost(o, st, S.clientById(o.clientId, st)));
+  const profit = costed.filter(k => k.complete).reduce((t, k) => t + k.profit, 0);
+  const notFinal = costed.filter(k => !k.complete).length;
   return (
     <section className="card sales">
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
@@ -275,6 +281,10 @@ function Sales({ orders }) {
         <div><div className="tiny muted">Received in {MONTHS[d.getMonth()].slice(0, 3)}</div><div className="num">{inr(received)}</div></div>
         <div><div className="tiny muted">FY {String(fyStart).slice(2)}–{String(fyStart + 1).slice(2)} so far</div><div className="num">{inr(fy.value)} · {fy.n} deal{fy.n === 1 ? '' : 's'}</div></div>
       </div>
+      {month.n > 0 && <button className="row between" onClick={() => app.push({ view: 'profit' })} style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--rule)', width: '100%', textAlign: 'left', alignItems: 'baseline' }}>
+        <div><div className="tiny muted">Profit in {MONTHS[d.getMonth()].slice(0, 3)}, before GST</div><div className="num">{inr(profit)}{notFinal ? <span className="tiny" style={{ color: 'var(--late)' }}> · {notFinal} order{notFinal === 1 ? '' : 's'} not counted yet, costs missing</span> : ''}</div></div>
+        <Icon n="right" style={{ width: 18, height: 18, flex: 'none' }} />
+      </button>}
     </section>
   );
 }
