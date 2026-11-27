@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp, Icon, Empty } from './kit.jsx';
-import { OutcomeSheet, AssignSheet } from './forms.jsx';
+import { OutcomeSheet, AssignSheet, BookSheet } from './forms.jsx';
 import * as S from '../data/store.js';
 import { useStore } from '../data/store.js';
 import { can, apptLabel, CITIES, orderStatusLabel } from '../data/catalog.js';
@@ -19,9 +19,14 @@ function TeamToday() {
   const s = useStore();
   const me = S.me(s);
   const t = today();
-  const appts = S.visibleAppointments(me, s).filter(a => a.status === 'scheduled' && (me.role !== 'rep' || a.assignedTo === me.id));
+  // A rep's visits: ones they're sent on, and any booked for clients assigned to them.
+  const mine = a => me.role !== 'rep' || a.assignedTo === me.id || (S.clientById(a.clientId, s) || {}).assignedTo === me.id;
+  const appts = S.visibleAppointments(me, s).filter(a => a.status === 'scheduled' && mine(a));
   const todays = appts.filter(a => a.date === t).sort((a, b) => (a.time < b.time ? -1 : 1));
-  const later = appts.filter(a => a.date > t && a.date <= addDays(t, 7)).sort((a, b) => (a.date + a.time < b.date + b.time ? -1 : 1));
+  const later = appts.filter(a => a.date > t).sort((a, b) => (a.date + a.time < b.date + b.time ? -1 : 1));
+  // New leads handed to this rep that haven't been visited yet, newest first.
+  const leads = me.role === 'rep' ? s.clients.filter(c => c.assignedTo === me.id && ['new', 'booked'].includes(c.stage))
+    .sort((a, b) => ((a.stageSince || a.createdAt) < (b.stageSince || b.createdAt) ? 1 : -1)) : [];
   const fus = S.followUps(me, s);
   // Most recent first, oldest at the bottom.
   const due = fus.filter(f => f.due <= t).sort((a, b) => (a.due === b.due ? 0 : a.due < b.due ? 1 : -1));
@@ -59,6 +64,25 @@ function TeamToday() {
         </section>
       )}
 
+      {leads.length > 0 && (
+        <section className="sec">
+          <div className="sec-h"><h2 className="h2">Your new leads</h2><span className="count">{leads.length}</span></div>
+          <div className="list">{leads.map(c => {
+            const next = s.appointments.filter(a => a.clientId === c.id && a.status === 'scheduled' && a.date >= t).sort((a, b) => (a.date + a.time < b.date + b.time ? -1 : 1))[0];
+            return (
+              <div className="item" key={c.id}>
+                <div className="item-main press" role="button" tabIndex={0} onClick={() => app.push({ view: 'client', id: c.id })}>
+                  <div className="item-title">{c.name}</div>
+                  <div className="item-sub">{[c.city, c.occasion, c.address ? c.address.split('\n')[0] : ''].filter(Boolean).join(' · ')}</div>
+                  <div className="tiny" style={{ marginTop: 2, color: next ? 'var(--fg)' : 'var(--late)' }}>{next ? `${apptLabel(next.type)} · ${rel(next.date)}${next.time ? `, ${fmtTime(next.time)}` : ''}` : 'No visit booked yet'}</div>
+                </div>
+                {!next && can(me, 'book') && <button className="btn small" onClick={() => app.open(<BookSheet clientId={c.id} />)}>Book</button>}
+              </div>
+            );
+          })}</div>
+        </section>
+      )}
+
       <section className="sec">
         <div className="sec-h"><h2 className="h2">Visits today</h2><span className="count">{todays.length}</span></div>
         {todays.length ? <div className="list">{todays.map(a => <ApptRow key={a.id} a={a} />)}</div>
@@ -76,7 +100,7 @@ function TeamToday() {
       </section>
 
       <section className="sec">
-        <div className="sec-h"><h2 className="h2">This week</h2><span className="count">{later.length} visit{later.length === 1 ? '' : 's'}</span></div>
+        <div className="sec-h"><h2 className="h2">Coming up</h2><span className="count">{later.length} visit{later.length === 1 ? '' : 's'}</span></div>
         {later.length ? <div className="list">{later.map(a => {
           const c = S.clientById(a.clientId, s);
           return (

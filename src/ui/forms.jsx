@@ -7,7 +7,7 @@ import { SOURCES, CITIES, APPT_TYPES, OCCASIONS, BUDGETS, LOST_REASONS, PAY_METH
 import { today, addDays, inr, fmtDate } from '../data/util.js';
 
 function reps(s, city) {
-  return s.users.filter(u => ['rep', 'owner'].includes(u.role) && (!city || u.city === city || u.role === 'owner'));
+  return s.users.filter(u => u.active !== false && ['rep', 'owner'].includes(u.role) && (!city || u.city === city || u.role === 'owner'));
 }
 
 // ---------- new client (manual leads: WhatsApp, email, referral…) ----------
@@ -235,7 +235,7 @@ export function AssignSheet({ clientId }) {
   const [who, setWho] = useState(c.assignedTo);
   return (
     <Sheet eyebrow={c.name} title="Assign"
-      foot={<><button className="btn ghost" onClick={app.close}>Cancel</button><button className="btn primary" disabled={!who} onClick={() => { S.updateClient(c.id, { assignedTo: who }); S.log(c.id, `Assigned to ${S.userName(who)}.`); app.close(); app.toast(`Assigned to ${S.userName(who)}`); }}>Assign</button></>}>
+      foot={<><button className="btn ghost" onClick={app.close}>Cancel</button><button className="btn primary" disabled={!who} onClick={() => { S.assignClient(c.id, who); app.close(); app.toast(`Assigned to ${S.userName(who)}`); }}>Assign</button></>}>
       <div className="stack-s">
         {reps(s).map(u => <Opt key={u.id} on={who === u.id} onClick={() => setWho(u.id)} title={u.name} sub={`${ROLES[u.role].label} · ${u.city}${u.city === c.city ? ' · same city' : ''}`} />)}
       </div>

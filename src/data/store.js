@@ -188,6 +188,17 @@ export function updateClient(id, patch) {
   set(s => { s.clients = s.clients.map(c => (c.id === id ? { ...c, ...patch } : c)); });
   persist(db => db.update('clients', id, patch));
 }
+// Hand a client to someone. Visits already booked for the client go with
+// them, unless another rep was specifically sent on that visit.
+export function assignClient(clientId, who) {
+  const s0 = get();
+  const c = clientById(clientId, s0); if (!c) return;
+  const isRep = id => (s0.users.find(u => u.id === id) || {}).role === 'rep';
+  const moved = s0.appointments.filter(a => a.clientId === clientId && a.status === 'scheduled' && a.assignedTo !== who && (!a.assignedTo || a.assignedTo === c.assignedTo || !isRep(a.assignedTo)));
+  updateClient(clientId, { assignedTo: who });
+  moved.forEach(a => updateAppointment(a.id, { assignedTo: who }));
+  log(clientId, `Assigned to ${userName(who)}.${moved.length ? ` ${moved.length} booked visit${moved.length > 1 ? 's' : ''} moved to them.` : ''}`);
+}
 export function setStage(id, stage, extra = {}) {
   const c = clientById(id);
   if (!c || (c.stage === stage && !Object.keys(extra).length)) return;
