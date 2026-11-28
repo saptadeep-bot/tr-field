@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp, Icon, Empty, Chips, Avatar, Field, Sheet } from './kit.jsx';
 import { signOut, changePassword, downloadEverything } from './Live.jsx';
 import { ClothSheet } from './Profit.jsx';
+import { NotifySection } from './Notify.jsx';
 import { ApptRow } from './Today.jsx';
 import * as S from '../data/store.js';
 import { useStore } from '../data/store.js';
@@ -164,12 +165,13 @@ function PersonSheet({ id }) {
   const app = useApp();
   const s = useStore();
   const u = s.users.find(x => x.id === id);
-  const [v, setV] = useState({ name: u.name, role: u.role, city: u.city || '', active: u.active !== false });
+  const [v, setV] = useState({ name: u.name, role: u.role, city: u.city || '', phone: u.phone || '', active: u.active !== false });
   const up = (k, x) => setV(o => ({ ...o, [k]: x }));
   return (
     <Sheet eyebrow="Team and access" title={u.email || u.name}
-      foot={<><button className="btn ghost" onClick={app.close}>Cancel</button><button className="btn primary" disabled={!v.name.trim()} onClick={() => { S.updateUser(id, { ...v, name: v.name.trim() }); app.close(); app.toast(v.active ? `${v.name} can sign in as ${ROLES[v.role].label.toLowerCase()}` : `${v.name} is switched off`); }}>Save</button></>}>
+      foot={<><button className="btn ghost" onClick={app.close}>Cancel</button><button className="btn primary" disabled={!v.name.trim()} onClick={() => { S.updateUser(id, { ...v, name: v.name.trim(), phone: v.phone.trim() }); app.close(); app.toast(v.active ? `${v.name} can sign in as ${ROLES[v.role].label.toLowerCase()}` : `${v.name} is switched off`); }}>Save</button></>}>
       <Field label="Name"><input id="ps-name" value={v.name} onChange={e => up('name', e.target.value)} /></Field>
+      <Field label="WhatsApp number" hint="Used to message them when you assign a lead"><input id="ps-phone" inputMode="tel" value={v.phone} onChange={e => up('phone', e.target.value)} placeholder="+91" /></Field>
       <div className="stack-s"><div className="eyebrow">Role</div><Chips wrap value={v.role} onChange={x => up('role', x)} options={Object.entries(ROLES).map(([k, r]) => ({ key: k, label: r.label }))} /></div>
       <div className="stack-s"><div className="eyebrow">City</div><Chips value={v.city} onChange={x => up('city', x)} options={CITIES} /></div>
       <div className="stack-s"><div className="eyebrow">Access</div><Chips value={v.active ? 'on' : 'off'} onChange={x => up('active', x === 'on')} options={[{ key: 'on', label: 'Can sign in' }, { key: 'off', label: 'Switched off' }]} /></div>
@@ -232,6 +234,7 @@ function Account() {
     <div className="stack">
       <h1 className="h1">Account</h1>
       <dl className="kv"><dt>Signed in as</dt><dd>{me.name}{me.email ? ` · ${me.email}` : ''}</dd><dt>Role</dt><dd>{ROLES[me.role].label}{me.city ? ` · ${me.city}` : ''}</dd></dl>
+      <NotifySection />
       <section className="sec">
         <h2 className="h2">Change your password</h2>
         <Field label="New password" hint="At least 8 characters."><input id="ac-pw" type="password" autoComplete="new-password" value={pw} onChange={e => setPw(e.target.value)} /></Field>

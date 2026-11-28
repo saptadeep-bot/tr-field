@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Sheet, Field, Chips, Opt, Avatar, useApp, readDraft, useDraft } from './kit.jsx';
+import { Sheet, Field, Chips, Opt, Avatar, useApp, readDraft, useDraft, Icon } from './kit.jsx';
 import { MeasureFormSheet } from './MeasureForm.jsx';
 import * as S from '../data/store.js';
 import { useStore } from '../data/store.js';
 import { SOURCES, CITIES, APPT_TYPES, OCCASIONS, BUDGETS, LOST_REASONS, PAY_METHODS, PAY_STAGES, ALL_STAGES, ROLES, can, stageLabel, apptLabel } from '../data/catalog.js';
-import { today, addDays, inr, fmtDate } from '../data/util.js';
+import { today, addDays, inr, fmtDate, fmtTime, digits } from '../data/util.js';
 
 function reps(s, city) {
   return s.users.filter(u => u.active !== false && ['rep', 'owner'].includes(u.role) && (!city || u.city === city || u.role === 'owner'));
@@ -128,8 +128,9 @@ export function BookSheet({ clientId, type = 'consult', appt }) {
   };
   return (
     <Sheet eyebrow={c.name} title={appt ? 'Move the visit' : 'Book a visit'}
-      foot={<><button className="btn ghost" onClick={app.close}>Cancel</button><button className="btn primary" onClick={save}>{appt ? 'Save' : 'Book'}</button></>}>
+      foot={<><button className="btn ghost" onClick={app.close}>{appt ? 'Close' : 'Cancel'}</button><button className="btn primary" onClick={save}>{appt ? 'Save' : 'Book'}</button></>}>
       <div className="form">
+        {appt && <CancelVisit appt={appt} />}
         <Field label="Visit"><Chips wrap value={v.type} onChange={x => up('type', x)} options={APPT_TYPES} /></Field>
         <div className="grid2">
           <Field label="Date"><input id="bk-d" type="date" value={v.date} onChange={e => up('date', e.target.value)} /></Field>
@@ -233,13 +234,59 @@ export function AssignSheet({ clientId }) {
   const s = useStore();
   const c = S.clientById(clientId, s);
   const [who, setWho] = useState(c.assignedTo);
+  const [done, setDone] = useState(false);
+  if (done) return <ToldSheet clientId={clientId} who={who} />;
   return (
     <Sheet eyebrow={c.name} title="Assign"
-      foot={<><button className="btn ghost" onClick={app.close}>Cancel</button><button className="btn primary" disabled={!who} onClick={() => { S.assignClient(c.id, who); app.close(); app.toast(`Assigned to ${S.userName(who)}`); }}>Assign</button></>}>
+      foot={<><button className="btn ghost" onClick={app.close}>Cancel</button><button className="btn primary" disabled={!who} onClick={() => { S.assignClient(c.id, who); if (who === S.me().id) { app.close(); app.toast('Assigned to you'); } else setDone(true); }}>Assign</button></>}>
       <div className="stack-s">
         {reps(s).map(u => <Opt key={u.id} on={who === u.id} onClick={() => setWho(u.id)} title={u.name} sub={`${ROLES[u.role].label} · ${u.city}${u.city === c.city ? ' · same city' : ''}`} />)}
       </div>
     </Sheet>
+  );
+}
+
+// After assigning: the app notification goes by itself; this offers a WhatsApp
+// message with the details as well, sent from your own WhatsApp.
+function ToldSheet({ clientId, who }) {
+  const app = useApp();
+  const s = useStore();
+  const c = S.clientById(clientId, s);
+  const u = s.users.find(x => x.id === who) || {};
+  const next = s.appointments.filter(a => a.clientId === clientId && a.status === 'scheduled' && a.date >= today()).sort((a, b) => (a.date + a.time < b.date + b.time ? -1 : 1))[0];
+  const first = (u.name || '').split(' ')[0];
+  const text = [`Hi ${first}, a new lead for you on the T&R app:`, `*${c.name}*${c.city ? ` · ${c.city}` : ''}`,
+    c.phone ? `Phone: ${c.phone}` : '', c.address ? `Address: ${c.address.replace(/\n/g, ', ')}` : '', c.occasion ? `Occasion: ${c.occasion}` : '',
+    next ? `${apptLabel(next.type)}: ${fmtDate(next.date)}${next.time ? `, ${fmtTime(next.time)}` : ''}` : 'No visit booked yet — please call and book.',
+    c.notes ? `Notes: ${c.notes.split('\n')[0]}` : ''].filter(Boolean).join('\n');
+  const num = digits(u.phone || '');
+  const to = num.length === 10 ? '91' + num : num;
+  return (
+    <Sheet eyebrow={c.name} title={`Assigned to ${first}`}
+      foot={<><button className="btn ghost" onClick={app.close}>Done</button>
+        {to ? <a className="btn primary" href={`https://wa.me/${to}?text=${encodeURIComponent(text)}`} target="_blank" rel="noopener noreferrer" onClick={() => { S.log(clientId, `WhatsApp sent to ${first} about the lead.`); setTimeout(app.close, 300); }}><Icon n="chat" />Tell {first} on WhatsApp</a>
+          : <button className="btn primary" disabled>No WhatsApp number</button>}</>}>
+      <div className="stack-s">
+        <p className="small" style={{ margin: 0 }}>{first} gets a notification on the app now. To make sure, send this on WhatsApp too:</p>
+        <pre className="small" style={{ whiteSpace: 'pre-wrap', margin: 0, padding: 12, background: 'var(--sunk)', border: '1px solid var(--rule)', fontFamily: 'inherit' }}>{text}</pre>
+        {!to && <p className="tiny" style={{ color: 'var(--late)', margin: 0 }}>Add {first}'s WhatsApp number under More → Team and access to send this.</p>}
+      </div>
+    </Sheet>
+  );
+}
+
+// Call a visit off. Whoever was going is told.
+function CancelVisit({ appt }) {
+  const app = useApp();
+  const [sure, setSure] = useState(false);
+  return (
+    <div className="row between" style={{ alignItems: 'center' }}>
+      <span className="tiny muted">Not happening?</span>
+      <button type="button" className="btn ghost small" style={sure ? { color: 'var(--late)', borderColor: 'var(--late)' } : null}
+        onClick={() => { if (!sure) { setSure(true); return; } S.updateAppointment(appt.id, { status: 'cancelled' }); S.log(appt.clientId, `${apptLabel(appt.type)} on ${fmtDate(appt.date)} cancelled.`); app.close(); app.toast('Visit cancelled'); }}>
+        {sure ? 'Tap again to cancel the visit' : 'Cancel this visit'}
+      </button>
+    </div>
   );
 }
 

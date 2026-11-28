@@ -29,6 +29,7 @@ const P = {
   edit: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',
   tape: 'M3 8h18v8H3zM7 8v3M11 8v4M15 8v3M19 8v4',
   camera: 'M4 8h4l2-3h4l2 3h4v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',
+  bell: 'M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0',
   history: 'M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4M12 8v4l3 2'
 };
 export function Icon({ n, ...rest }) {

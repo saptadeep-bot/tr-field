@@ -6,6 +6,7 @@ import { useStore } from '../data/store.js';
 import { can, apptLabel, CITIES, orderStatusLabel } from '../data/catalog.js';
 import { Chips } from './kit.jsx';
 import { orderCost } from '../data/costs.js';
+import { NotifyCard } from './Notify.jsx';
 import { today, fmtLong, fmtTime, dueLabel, addDays, fmtDate, rel, inr } from '../data/util.js';
 
 export function Today() {
@@ -41,6 +42,7 @@ function TeamToday() {
       <header>
         <div className="eyebrow">{fmtLong(t)}</div>
         <h1 className="h1" style={{ marginTop: 4 }}>{greet}, {me.name.split(' ')[0]}.</h1>
+        {s.live && <div style={{ marginTop: 12 }}><NotifyCard /></div>}
         <p className="lead">
           {todays.length ? `${todays.length} visit${todays.length > 1 ? 's' : ''} today` : 'No visits today'}
           {' · '}{due.length ? `${due.length} follow-up${due.length > 1 ? 's' : ''} due${overdue ? `, ${overdue} overdue` : ''}` : 'nothing due'}
@@ -204,6 +206,7 @@ function OwnerToday() {
         <h1 className="h1" style={{ marginTop: 4 }}>{greet}, {me.name.split(' ')[0]}.</h1>
       </header>
 
+      {s.live && <NotifyCard />}
       <Sales orders={s.orders} />
 
       {inbox.length > 0 && (

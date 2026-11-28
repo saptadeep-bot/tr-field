@@ -37,6 +37,20 @@ export function App() {
     if (d && d.kind === 'newClient' && can(me, 'editClients')) app.open(<NewClientSheet />);
     else if (d && d.kind === 'editClient' && S.clientById(d.key, s)) app.open(<EditClientSheet clientId={d.key} />);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Tapping a notification opens its client or order.
+  useEffect(() => {
+    const go = g => {
+      const [kind, id] = String(g || '').split(':');
+      if (kind === 'client' && id) app.push({ view: 'client', id });
+      else if (kind === 'order' && id) app.push({ view: 'order', id });
+    };
+    const q = new URLSearchParams(location.search).get('go');
+    if (q) { go(q); history.replaceState(null, '', location.pathname); }
+    const onMsg = e => e.data && e.data.go && go(e.data.go);
+    if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', onMsg);
+    if (s.live) import('../data/push.js').then(P => import('../data/live.js').then(L => P.resync(L.db)));
+    return () => { if ('serviceWorker' in navigator) navigator.serviceWorker.removeEventListener('message', onMsg); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // A change that didn't reach the database: say so, and show the saved copy again.
   useEffect(() => {
     const h = () => app.toast("That didn't save — check your signal and try again");

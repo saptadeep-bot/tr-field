@@ -29,3 +29,10 @@ alter default privileges in schema public grant all on sequences to anon, authen
 
 -- What PostgREST signs in as (local API test only)
 grant anon, authenticated to authenticator;
+
+-- pg_net stand-in: records calls instead of making them (test only)
+create schema if not exists extensions;
+create schema if not exists net;
+create table if not exists net.calls (id serial primary key, url text, at timestamptz default now());
+create or replace function net.http_post(url text, body jsonb default '{}', params jsonb default '{}', headers jsonb default '{}', timeout_milliseconds int default 1000)
+returns bigint language sql security definer as $$ insert into net.calls (url) values (url) returning id::bigint $$;

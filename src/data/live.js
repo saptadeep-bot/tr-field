@@ -167,6 +167,9 @@ export const db = {
     check(await sb.from('settings').update({ pricing: pub }).eq('id', 1));
     if (fx) check(await sb.from('cost_settings').update({ fx, landing_uplift_pct: landingUpliftPct }).eq('id', 1));
   },
+  pushSave: async (endpoint, p256dh, auth, device) => check(await sb.rpc('save_push_subscription', { p_endpoint: endpoint, p_p256dh: p256dh, p_auth: auth, p_device: device })),
+  pushRemove: async endpoint => check(await sb.rpc('remove_push_subscription', { p_endpoint: endpoint })),
+  notifyTest: async () => check(await sb.rpc('notify_test')),
   profile: async (id, patch) => check(await sb.from('profiles').update(toRow('profiles', patch)).eq('id', id)),
   // Each new photo is uploaded under the client; returns the stored paths in order.
   photos: async (clientId, formId, photos) => {
